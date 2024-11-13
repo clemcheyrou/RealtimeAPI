@@ -1,21 +1,56 @@
+/**
+ * Running a local relay server will allow you to hide your API key
+ * and run custom logic on the server
+ *
+ * Set the local relay server address to:
+ * REACT_APP_LOCAL_RELAY_SERVER_URL=http://localhost:8081
+ *
+ * This will also require you to set OPENAI_API_KEY= in a `.env` file
+ * You can run it with `npm run relay`, in parallel with `npm start`
+ */
 const LOCAL_RELAY_SERVER_URL: string =
   process.env.REACT_APP_LOCAL_RELAY_SERVER_URL || '';
-
-import { useEffect, useRef, useCallback, useState } from 'react';
-import { FaMicrophoneAlt } from "react-icons/fa";
 import logo from "./../assets/ChatGPT_logo.webp";
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 import { RealtimeClient } from '@openai/realtime-api-beta';
 import { ItemType } from '@openai/realtime-api-beta/dist/lib/client.js';
 import { WavRecorder, WavStreamPlayer } from '../lib/wavtools/index.js';
-import { instructions } from '../utils/conversation_config.js';
 import { WavRenderer } from '../utils/wav_renderer';
+import { instructions } from '../utils/conversation_config.js';
+import { voice } from '../utils/conversation_config.js';
 
-import { X, Edit } from 'react-feather';
+import { X, Edit, Zap, ArrowUp, ArrowDown } from 'react-feather';
 import { Button } from '../components/button/Button';
+import { Toggle } from '../components/toggle/Toggle';
+import { Map } from '../components/Map';
 
 import './ConsolePage.scss';
+import { isJsxOpeningLikeElement } from 'typescript';
 
+import mermaid from 'mermaid';
+import { FaMicrophoneAlt } from 'react-icons/fa';
+
+/**
+ * Type for result from get_weather() function call
+ */
+interface Coordinates {
+  lat: number;
+  lng: number;
+  location?: string;
+  temperature?: {
+    value: number;
+    units: string;
+  };
+  wind_speed?: {
+    value: number;
+    units: string;
+  };
+}
+
+/**
+ * Type for all event logs
+ */
 interface RealtimeEvent {
   time: string;
   source: 'client' | 'server';
@@ -79,13 +114,6 @@ export function ConsolePage() {
    * - memoryKv is for set_memory() function
    * - coords, marker are for get_weather() function
    */
-  const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-  const audioContext = new AudioContext();
-  const analyser = audioContext.createAnalyser();
-  analyser.fftSize = 256; // Taille de la FFT pour l'analyse audio
-  const bufferLength = analyser.frequencyBinCount;
-  const dataArray = new Uint8Array(bufferLength);
-  
   const [items, setItems] = useState<ItemType[]>([]);
   const [realtimeEvents, setRealtimeEvents] = useState<RealtimeEvent[]>([]);
   const [expandedEvents, setExpandedEvents] = useState<{
@@ -94,7 +122,35 @@ export function ConsolePage() {
   const [isConnected, setIsConnected] = useState(false);
   const [canPushToTalk, setCanPushToTalk] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
- 
+  const [memoryKv, setMemoryKv] = useState<{ [key: string]: any }>({});
+  const [coords, setCoords] = useState<Coordinates | null>({
+    lat: 37.775593,
+    lng: -122.418137,
+  });
+  const [marker, setMarker] = useState<Coordinates | null>(null);
+    // mermaid state to hold diagram SVG
+  const [diagramSvg, setDiagramSvg] = useState<string>('')
+
+  /**
+   * Utility for formatting the timing of logs
+   */
+  const formatTime = useCallback((timestamp: string) => {
+    const startTime = startTimeRef.current;
+    const t0 = new Date(startTime).valueOf();
+    const t1 = new Date(timestamp).valueOf();
+    const delta = t1 - t0;
+    const hs = Math.floor(delta / 10) % 100;
+    const s = Math.floor(delta / 1000) % 60;
+    const m = Math.floor(delta / 60_000) % 60;
+    const pad = (n: number) => {
+      let s = n + '';
+      while (s.length < 2) {
+        s = '0' + s;
+      }
+      return s;
+    };
+    return `${pad(m)}:${pad(s)}.${pad(hs)}`;
+  }, []);
 
   /**
    * When you click the API key
@@ -131,17 +187,32 @@ export function ConsolePage() {
 
     // Connect to realtime API
     await client.connect();
+    client.sendUserMessageContent([
+      {
+        type: `input_text`,
+        text: `Bonjour`,
+        // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`
+      },
+    ]);
 
     if (client.getTurnDetectionType() === 'server_vad') {
       await wavRecorder.record((data) => client.appendInputAudio(data.mono));
     }
   }, []);
 
-
+  /**
+   * Disconnect and reset conversation state
+   */
   const disconnectConversation = useCallback(async () => {
     setIsConnected(false);
     setRealtimeEvents([]);
     setItems([]);
+    setMemoryKv({});
+    setCoords({
+      lat: 37.775593,
+      lng: -122.418137,
+    });
+    setMarker(null);
 
     const client = clientRef.current;
     client.disconnect();
@@ -313,11 +384,133 @@ export function ConsolePage() {
 
     // Set instructions
     client.updateSession({ instructions: instructions });
+    client.updateSession({ voice: voice })
     // Set transcription, otherwise we don't get user transcriptions back
     client.updateSession({ input_audio_transcription: { model: 'whisper-1' } });
 
     // Add tools
-    
+    client.addTool(
+      {
+        name: 'set_memory',
+        description: 'Saves important data about the user into memory.',
+        parameters: {
+          type: 'object',
+          properties: {
+            key: {
+              type: 'string',
+              description:
+                'The key of the memory value. Always use lowercase and underscores, no other characters.',
+            },
+            value: {
+              type: 'string',
+              description: 'Value can be anything represented as a string',
+            },
+          },
+          required: ['key', 'value'],
+        },
+      },
+      async ({ key, value }: { [key: string]: any }) => {
+        setMemoryKv((memoryKv) => {
+          const newKv = { ...memoryKv };
+          newKv[key] = value;
+          return newKv;
+        });
+        return { ok: true };
+      }
+    );
+    client.addTool(
+      {
+        name: 'generate_mermaid_diagram',
+        description: 'Generates a Mermaid diagram based on the provided description.',
+        parameters: {
+          type: 'object',
+          properties: {
+              description: {
+              type: 'string',
+              description: 'A textual description of the diagram to generate.',
+              },
+          },
+          required: ['description'],
+        },
+      },
+      async ({ description }: { [key: string]: any }) => {
+        // Call OpenAI's Chat Completion API
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o',
+            messages: [
+              {
+                  role: 'system',
+                  content: 'You are an assistant that generates Mermaid diagram code based on the given description. The mermaid diagram code output must be raw string. no markdown format',
+              },
+              {
+                  role: 'user',
+                  content: `Generate Mermaid diagram code for the following description:\n${description}`,
+              },
+            ],
+          }),
+        });
+
+        const data = await response.json();
+        const mermaidCode = data.choices[0].message.content.trim();
+        console.log(mermaidCode)
+
+        // Render the Mermaid diagram
+        const { svg } = await mermaid.render('generatedDiagram', mermaidCode);
+        setDiagramSvg(svg);
+
+        return { ok: true };
+      }
+    );
+    // client.addTool(
+    //   {
+    //     name: 'get_weather',
+    //     description:
+    //       'Retrieves the weather for a given lat, lng coordinate pair. Specify a label for the location.',
+    //     parameters: {
+    //       type: 'object',
+    //       properties: {
+    //         lat: {
+    //           type: 'number',
+    //           description: 'Latitude',
+    //         },
+    //         lng: {
+    //           type: 'number',
+    //           description: 'Longitude',
+    //         },
+    //         location: {
+    //           type: 'string',
+    //           description: 'Name of the location',
+    //         },
+    //       },
+    //       required: ['lat', 'lng', 'location'],
+    //     },
+    //   },
+    //   async ({ lat, lng, location }: { [key: string]: any }) => {
+    //     setMarker({ lat, lng, location });
+    //     setCoords({ lat, lng, location });
+    //     const result = await fetch(
+    //       `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m`
+    //     );
+    //     const json = await result.json();
+    //     const temperature = {
+    //       value: json.current.temperature_2m as number,
+    //       units: json.current_units.temperature_2m as string,
+    //     };
+    //     const wind_speed = {
+    //       value: json.current.wind_speed_10m as number,
+    //       units: json.current_units.wind_speed_10m as string,
+    //     };
+    //     setMarker({ lat, lng, location, temperature, wind_speed });
+    //     return json;
+    //   }
+    // );
+
     // handle realtime events from client + server for event logging
     client.on('realtime.event', (realtimeEvent: RealtimeEvent) => {
       setRealtimeEvents((realtimeEvents) => {
@@ -399,21 +592,13 @@ export function ConsolePage() {
               {items.map((conversationItem, i) => {
                 return (
                   <div className="conversation-item" key={conversationItem.id}>
-                    <div className={`speaker ${conversationItem.role || ''}`}>
+                    {/* <div className={`speaker ${conversationItem.role || ''}`}>
                       <div>
                         {(
                           conversationItem.role || conversationItem.type
                         ).replaceAll('_', ' ')}
                       </div>
-                      <div
-                        className="close"
-                        onClick={() =>
-                          deleteConversationItem(conversationItem.id)
-                        }
-                      >
-                        <X />
-                      </div>
-                    </div>
+                    </div> */}
                     <div className={`speaker-content`}>
                       {/* tool response */}
                       {conversationItem.type === 'function_call_output' && (
@@ -428,17 +613,17 @@ export function ConsolePage() {
                       )}
                       {!conversationItem.formatted.tool &&
                         conversationItem.role === 'user' && (
-                          <div>
+                          <div className="bg-[#809a81] opacity-60 p-4 rounded-lg">
                             {conversationItem.formatted.transcript ||
                               (conversationItem.formatted.audio?.length
                                 ? '...'
                                 : conversationItem.formatted.text ||
-                                  '(item sent)')}
+                                  '')}
                           </div>
                         )}
                       {!conversationItem.formatted.tool &&
                         conversationItem.role === 'assistant' && (
-                          <div>
+                          <div className="bg-[#809a81] p-4 rounded-lg w-auto">
                             {conversationItem.formatted.transcript ||
                               conversationItem.formatted.text ||
                               '(truncated)'}
@@ -459,7 +644,7 @@ export function ConsolePage() {
           <div className="flex justify-end">
             {isConnected && canPushToTalk && (
               <Button
-                label={isRecording ? 'lache pour envoier' : 'appuie pour repondre'}
+                label={isRecording ? "Lâcher pour envoyer" : "Appuyez pour répondre"}
                 buttonStyle={isRecording ? 'alert' : 'regular'}
                 disabled={!isConnected || !canPushToTalk}
                 onMouseDown={startRecording}
@@ -485,4 +670,4 @@ export function ConsolePage() {
       </div>
     </div>
   );
-}
+}  

@@ -1,5 +1,5 @@
 [data-component='ConsolePage'] {
-  font-family: 'Roboto Mono', monospace;
+  font-family: 'Inter', monospace;
   font-weight: 400;
   font-style: normal;
   font-size: 12px;
@@ -169,16 +169,17 @@
     }
     .speaker {
       position: relative;
-      text-align: left;
       gap: 16px;
-      width: 80px;
+      width: auto;
       flex-shrink: 0;
       margin-right: 16px;
       &.user {
-        color: #0099ff;
+        color: #000000;
+        text-align: right;
       }
       &.assistant {
-        color: #009900;
+        color: #ffffff;
+        text-align: left;
       }
     }
     .speaker-content {

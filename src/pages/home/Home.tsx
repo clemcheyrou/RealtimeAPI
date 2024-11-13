@@ -37,7 +37,7 @@ export const Home = () => {
   }, []);
 
   return (
-  <div className="m-10 md:m-20 relative flex flex-col justify-between h-[80vh]">
+  <div className="m-10 mt-20 md:m-20 relative flex flex-col justify-between h-[80vh]">
     <h1 ref={headingRef} className="font-inter font-bold text-4xl">
       Simplifiez la création de votre entreprise <span> <br />grâce à l'IA</span>
     </h1>
@@ -51,7 +51,7 @@ export const Home = () => {
         Notre agent conversationnel vous guide simplement à chaque étape <span className="font-bold">de la création à la gestion de votre entreprise</span>, en posant des questions adaptées à votre profil pour <span className="font-bold">choisir le bon statut</span> et remplir vos démarches, le tout depuis votre mobile.
       </p>
       <Link to={'/ia'}>
-        <div className="w-2/3 px-6 py-4 bg-white ml-20 flex-shrink-0 text-sm rounded-lg flex flex justify-between items-end">
+        <div className="w-2/3 px-6 py-4 bg-white ml-16 flex-shrink-0 text-sm rounded-lg flex flex justify-between items-end">
           Commencer dès maintenant
           <FaArrowRight className="w-6 mb-1" />
         </div>
