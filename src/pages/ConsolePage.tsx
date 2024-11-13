@@ -12,6 +12,8 @@ const LOCAL_RELAY_SERVER_URL: string =
   process.env.REACT_APP_LOCAL_RELAY_SERVER_URL || '';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { FaMicrophoneAlt } from "react-icons/fa";
+import logo from "./../assets/ChatGPT_logo.webp";
 
 import { RealtimeClient } from '@openai/realtime-api-beta';
 import { ItemType } from '@openai/realtime-api-beta/dist/lib/client.js';
@@ -19,34 +21,12 @@ import { WavRecorder, WavStreamPlayer } from '../lib/wavtools/index.js';
 import { instructions } from '../utils/conversation_config.js';
 import { WavRenderer } from '../utils/wav_renderer';
 
-import { X, Edit, Zap, ArrowUp, ArrowDown } from 'react-feather';
+import { X, Edit } from 'react-feather';
 import { Button } from '../components/button/Button';
-import { Toggle } from '../components/toggle/Toggle';
-import { Map } from '../components/Map';
 
 import './ConsolePage.scss';
 import { isJsxOpeningLikeElement } from 'typescript';
 
-/**
- * Type for result from get_weather() function call
- */
-interface Coordinates {
-  lat: number;
-  lng: number;
-  location?: string;
-  temperature?: {
-    value: number;
-    units: string;
-  };
-  wind_speed?: {
-    value: number;
-    units: string;
-  };
-}
-
-/**
- * Type for all event logs
- */
 interface RealtimeEvent {
   time: string;
   source: 'client' | 'server';
@@ -125,33 +105,7 @@ export function ConsolePage() {
   const [isConnected, setIsConnected] = useState(false);
   const [canPushToTalk, setCanPushToTalk] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
-  const [memoryKv, setMemoryKv] = useState<{ [key: string]: any }>({});
-  const [coords, setCoords] = useState<Coordinates | null>({
-    lat: 37.775593,
-    lng: -122.418137,
-  });
-  const [marker, setMarker] = useState<Coordinates | null>(null);
-
-  /**
-   * Utility for formatting the timing of logs
-   */
-  const formatTime = useCallback((timestamp: string) => {
-    const startTime = startTimeRef.current;
-    const t0 = new Date(startTime).valueOf();
-    const t1 = new Date(timestamp).valueOf();
-    const delta = t1 - t0;
-    const hs = Math.floor(delta / 10) % 100;
-    const s = Math.floor(delta / 1000) % 60;
-    const m = Math.floor(delta / 60_000) % 60;
-    const pad = (n: number) => {
-      let s = n + '';
-      while (s.length < 2) {
-        s = '0' + s;
-      }
-      return s;
-    };
-    return `${pad(m)}:${pad(s)}.${pad(hs)}`;
-  }, []);
+ 
 
   /**
    * When you click the API key
@@ -188,32 +142,17 @@ export function ConsolePage() {
 
     // Connect to realtime API
     await client.connect();
-    client.sendUserMessageContent([
-      {
-        type: `input_text`,
-        text: `Hello!`,
-        // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`
-      },
-    ]);
 
     if (client.getTurnDetectionType() === 'server_vad') {
       await wavRecorder.record((data) => client.appendInputAudio(data.mono));
     }
   }, []);
 
-  /**
-   * Disconnect and reset conversation state
-   */
+
   const disconnectConversation = useCallback(async () => {
     setIsConnected(false);
     setRealtimeEvents([]);
     setItems([]);
-    setMemoryKv({});
-    setCoords({
-      lat: 37.775593,
-      lng: -122.418137,
-    });
-    setMarker(null);
 
     const client = clientRef.current;
     client.disconnect();
@@ -410,58 +349,10 @@ export function ConsolePage() {
         },
       },
       async ({ key, value }: { [key: string]: any }) => {
-        setMemoryKv((memoryKv) => {
-          const newKv = { ...memoryKv };
-          newKv[key] = value;
-          return newKv;
-        });
         return { ok: true };
       }
     );
-    client.addTool(
-      {
-        name: 'get_weather',
-        description:
-          'Retrieves the weather for a given lat, lng coordinate pair. Specify a label for the location.',
-        parameters: {
-          type: 'object',
-          properties: {
-            lat: {
-              type: 'number',
-              description: 'Latitude',
-            },
-            lng: {
-              type: 'number',
-              description: 'Longitude',
-            },
-            location: {
-              type: 'string',
-              description: 'Name of the location',
-            },
-          },
-          required: ['lat', 'lng', 'location'],
-        },
-      },
-      async ({ lat, lng, location }: { [key: string]: any }) => {
-        setMarker({ lat, lng, location });
-        setCoords({ lat, lng, location });
-        const result = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,wind_speed_10m`
-        );
-        const json = await result.json();
-        const temperature = {
-          value: json.current.temperature_2m as number,
-          units: json.current_units.temperature_2m as string,
-        };
-        const wind_speed = {
-          value: json.current.wind_speed_10m as number,
-          units: json.current_units.wind_speed_10m as string,
-        };
-        setMarker({ lat, lng, location, temperature, wind_speed });
-        return json;
-      }
-    );
-
+    
     // handle realtime events from client + server for event logging
     client.on('realtime.event', (realtimeEvent: RealtimeEvent) => {
       setRealtimeEvents((realtimeEvents) => {
@@ -495,23 +386,6 @@ export function ConsolePage() {
           24000
         );
         item.formatted.file = wavFile;
-
-          // Créer un source buffer
-          const source = audioContext.createBufferSource();
-          // audioContext.decodeAudioData(wavFile.audio, (decodedAudio) => {
-          //   source.buffer = decodedAudio;
-          //   source.connect(analyser);
-          //   analyser.connect(audioContext.destination);
-          //   source.start(0);
-          // });
-
-          // Fonction pour analyser l'audio à chaque frame
-          function animateAudio() {
-            analyser.getByteFrequencyData(dataArray);
-            requestAnimationFrame(animateAudio);
-          }
-
-          animateAudio();
       }
       setItems(items);
     });
@@ -524,13 +398,10 @@ export function ConsolePage() {
     };
   }, []);
 
-  /**
-   * Render the application
-   */
   return (
     <div data-component="ConsolePage">
-      <div className="content-top">
-        <div className="content-api-key">
+      <div>
+      <div className="content-api-key hidden">
           {!LOCAL_RELAY_SERVER_URL && (
             <Button
               icon={Edit}
@@ -544,84 +415,14 @@ export function ConsolePage() {
       </div>
       <div className="content-main">
         <div className="content-logs">
-          <div className="content-block events">
-            <div className="visualization">
-              <div className="visualization-entry client">
-                <canvas ref={clientCanvasRef} />
-              </div>
-              <div className="visualization-entry server">
-                <canvas ref={serverCanvasRef} />
-              </div>
-            </div>
-            <div className="content-block-title">events</div>
-            <div className="content-block-body" ref={eventsScrollRef}>
-              {!realtimeEvents.length && `awaiting connection...`}
-              {realtimeEvents.map((realtimeEvent, i) => {
-                const count = realtimeEvent.count;
-                const event = { ...realtimeEvent.event };
-                if (event.type === 'input_audio_buffer.append') {
-                  event.audio = `[trimmed: ${event.audio.length} bytes]`;
-                } else if (event.type === 'response.audio.delta') {
-                  event.delta = `[trimmed: ${event.delta.length} bytes]`;
-                }
-                return (
-                  <div className="event" key={event.event_id}>
-                    <div className="event-timestamp">
-                      {formatTime(realtimeEvent.time)}
-                    </div>
-                    <div className="event-details">
-                      <div
-                        className="event-summary"
-                        onClick={() => {
-                          // toggle event details
-                          const id = event.event_id;
-                          const expanded = { ...expandedEvents };
-                          if (expanded[id]) {
-                            delete expanded[id];
-                          } else {
-                            expanded[id] = true;
-                          }
-                          setExpandedEvents(expanded);
-                        }}
-                      >
-                        <div
-                          className={`event-source ${
-                            event.type === 'error'
-                              ? 'error'
-                              : realtimeEvent.source
-                          }`}
-                        >
-                          {realtimeEvent.source === 'client' ? (
-                            <ArrowUp />
-                          ) : (
-                            <ArrowDown />
-                          )}
-                          <span>
-                            {event.type === 'error'
-                              ? 'error!'
-                              : realtimeEvent.source}
-                          </span>
-                        </div>
-                        <div className="event-type">
-                          {event.type}
-                          {count && ` (${count})`}
-                        </div>
-                      </div>
-                      {!!expandedEvents[event.event_id] && (
-                        <div className="event-payload">
-                          {JSON.stringify(event, null, 2)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-          <div className="content-block conversation">
-            <div className="content-block-title">conversation</div>
+        <img 
+          src={logo} 
+          alt="logo" 
+          className="mt-5 rounded-lg w-[40vh] m-auto" 
+        />
+          <div className="content-block conversation mt-6 mx-10">
             <div className="content-block-body" data-conversation-content>
-              {!items.length && `awaiting connection...`}
+              {!items.length && `En attente d'une réponse...`}
               {items.map((conversationItem, i) => {
                 return (
                   <div className="conversation-item" key={conversationItem.id}>
@@ -657,7 +458,7 @@ export function ConsolePage() {
                           <div>
                             {conversationItem.formatted.transcript ||
                               (conversationItem.formatted.audio?.length
-                                ? '(awaiting transcript)'
+                                ? '...'
                                 : conversationItem.formatted.text ||
                                   '(item sent)')}
                           </div>
@@ -670,45 +471,42 @@ export function ConsolePage() {
                               '(truncated)'}
                           </div>
                         )}
-                      {conversationItem.formatted.file && (
+                      {/* {conversationItem.formatted.file && (
                         <audio
                           src={conversationItem.formatted.file.url}
                           controls
                         />
-                      )}
+                      )} */}
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-          <div className="content-actions">
-            <Toggle
-              defaultValue={false}
-              labels={['manual', 'vad']}
-              values={['none', 'server_vad']}
-              onChange={(_, value) => changeTurnEndType(value)}
-            />
-            <div className="spacer" />
             {isConnected && canPushToTalk && (
               <Button
-                label={isRecording ? 'release to send' : 'push to talk'}
+                label={isRecording ? 'lache pour envoier' : 'appuie pour repondre'}
                 buttonStyle={isRecording ? 'alert' : 'regular'}
                 disabled={!isConnected || !canPushToTalk}
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
+                className='w-1/3 m-auto mb-2'
               />
             )}
-            <div className="spacer" />
-            <Button
-              label={isConnected ? 'disconnect' : 'connect'}
-              iconPosition={isConnected ? 'end' : 'start'}
-              icon={isConnected ? X : Zap}
-              buttonStyle={isConnected ? 'regular' : 'action'}
-              onClick={
-                isConnected ? disconnectConversation : connectConversation
-              }
-            />
+          <div className="m-auto">
+            {/* <Toggle
+              defaultValue={false}
+              labels={['manual', 'vad']}
+              values={['none', 'server_vad']}
+              onChange={(_, value) => changeTurnEndType(value)}
+            /> */}
+            <button
+              onClick={isConnected ? disconnectConversation : connectConversation}
+              className={`relative flex items-center p-4 rounded-lg bg-white`}
+            >
+              <FaMicrophoneAlt className="w-6" />
+              <span className={`absolute top-[-5px] right-[-5px] w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>            
+            </button>
           </div>
         </div>
       </div>
