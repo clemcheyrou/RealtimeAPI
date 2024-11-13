@@ -1,13 +1,3 @@
-/**
- * Running a local relay server will allow you to hide your API key
- * and run custom logic on the server
- *
- * Set the local relay server address to:
- * REACT_APP_LOCAL_RELAY_SERVER_URL=http://localhost:8081
- *
- * This will also require you to set OPENAI_API_KEY= in a `.env` file
- * You can run it with `npm run relay`, in parallel with `npm start`
- */
 const LOCAL_RELAY_SERVER_URL: string =
   process.env.REACT_APP_LOCAL_RELAY_SERVER_URL || '';
 
@@ -25,7 +15,6 @@ import { X, Edit } from 'react-feather';
 import { Button } from '../components/button/Button';
 
 import './ConsolePage.scss';
-import { isJsxOpeningLikeElement } from 'typescript';
 
 interface RealtimeEvent {
   time: string;
@@ -328,30 +317,6 @@ export function ConsolePage() {
     client.updateSession({ input_audio_transcription: { model: 'whisper-1' } });
 
     // Add tools
-    client.addTool(
-      {
-        name: 'set_memory',
-        description: 'Saves important data about the user into memory.',
-        parameters: {
-          type: 'object',
-          properties: {
-            key: {
-              type: 'string',
-              description:
-                'The key of the memory value. Always use lowercase and underscores, no other characters.',
-            },
-            value: {
-              type: 'string',
-              description: 'Value can be anything represented as a string',
-            },
-          },
-          required: ['key', 'value'],
-        },
-      },
-      async ({ key, value }: { [key: string]: any }) => {
-        return { ok: true };
-      }
-    );
     
     // handle realtime events from client + server for event logging
     client.on('realtime.event', (realtimeEvent: RealtimeEvent) => {
@@ -420,9 +385,17 @@ export function ConsolePage() {
           alt="logo" 
           className="mt-5 rounded-lg w-[40vh] m-auto" 
         />
-          <div className="content-block conversation mt-6 mx-10">
+          <div className="content-block conversation mt-6">
             <div className="content-block-body" data-conversation-content>
-              {!items.length && `En attente d'une réponse...`}
+              {!items.length && (
+                <div className='text-center'>
+                <h2 className='font-inter font-bold text-4xl mb-10'>Hello, I’m YO</h2>
+                <p className='font-inter text-1xl'>Vous avez une idée d’entreprise ? Génial !<br/>
+                  Je suis là pour vous aider à la concrétiser, étape par étape. On va avancer ensemble,<br/> et je serai là pour vous guider et vous donner des conseils.
+                  <br/><br/>
+                  <span className='font-bold'>Cliquez sur le micro</span> afin que je puisse vous entendre et <br/>commencer l’aventure ! 🚀</p>
+                </div>
+              )}
               {items.map((conversationItem, i) => {
                 return (
                   <div className="conversation-item" key={conversationItem.id}>
@@ -493,7 +466,7 @@ export function ConsolePage() {
                 className='w-1/3 m-auto mb-2'
               />
             )}
-          <div className="m-auto">
+          <div className="flex justify-end">
             {/* <Toggle
               defaultValue={false}
               labels={['manual', 'vad']}
@@ -502,7 +475,7 @@ export function ConsolePage() {
             /> */}
             <button
               onClick={isConnected ? disconnectConversation : connectConversation}
-              className={`relative flex items-center p-4 rounded-lg bg-white`}
+              className={`relative flex items-center p-4 rounded-lg bg-white m-auto mt-10`}
             >
               <FaMicrophoneAlt className="w-6" />
               <span className={`absolute top-[-5px] right-[-5px] w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>            
