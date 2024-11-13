@@ -456,6 +456,7 @@ export function ConsolePage() {
               })}
             </div>
           </div>
+          <div className="flex justify-end">
             {isConnected && canPushToTalk && (
               <Button
                 label={isRecording ? 'lache pour envoier' : 'appuie pour repondre'}
@@ -463,10 +464,9 @@ export function ConsolePage() {
                 disabled={!isConnected || !canPushToTalk}
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
-                className='w-1/3 m-auto mb-2'
+                className='flex items-center rounded-lg bg-white m-auto mt-10'
               />
             )}
-          <div className="flex justify-end">
             {/* <Toggle
               defaultValue={false}
               labels={['manual', 'vad']}
