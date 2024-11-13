@@ -11,8 +11,7 @@ export const App = () => {
   <Router>
     <Routes>
       <Route path="/" element={<Layout />}>
-          <Route path="ia" element={<ConsolePage />} />
-          <Route index path="" element={<Home />} />
+          <Route path="/" element={<ConsolePage />} />
           <Route index path="testr3f" element={<Testr3f />} />
     </Route>
     </Routes>

@@ -29,6 +29,7 @@ import { isJsxOpeningLikeElement } from 'typescript';
 
 import mermaid from 'mermaid';
 import { FaMicrophoneAlt } from "react-icons/fa";
+import { Popin } from "./Popin";
 
 /**
  * Type for result from get_weather() function call
@@ -675,6 +676,7 @@ export function ConsolePage() {
               <FaMicrophoneAlt className="w-6" />
               <span className={`absolute top-[-5px] right-[-5px] w-4 h-4 rounded-full border-2 border-white ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>            
             </button>
+            <Popin status={true}/>
           </div>
         </div>
       </div>
