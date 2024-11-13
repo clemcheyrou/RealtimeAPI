@@ -36,7 +36,7 @@
   .content-main {
     flex-grow: 1;
     flex-shrink: 1 !important;
-    margin: 0px 16px;
+    margin: 0px 306px;
     display: flex;
     overflow: hidden;
     margin-bottom: 24px;
@@ -44,7 +44,7 @@
       position: relative;
       display: flex;
       flex-direction: column;
-      max-height: 100%;
+      max-height: 150%;
       width: 100%;
       .content-block-title {
         flex-shrink: 0;
@@ -133,11 +133,32 @@
         flex-shrink: 0;
         width: 100%;
         overflow: hidden;
-        height: 200px;
+        height: 400px;
         min-height: 0;
-        max-height: 200px;
+        max-height: 300px;
       }
     }
+  }
+
+  .content-block-body::-webkit-scrollbar {
+    margin-left: 10px;
+    width: 8px; /* Largeur de la scrollbar */
+    height: 8px; /* Hauteur de la scrollbar horizontale (si présente) */
+  }
+  
+  .content-block-body::-webkit-scrollbar-thumb {
+    background-color: #94AC97; /* Couleur du "pouce" de la scrollbar */
+    border-radius: 10px; /* Coins arrondis pour le pouce */
+    border: 2px solid #fff; /* Bordure autour du pouce */
+  }
+  
+  .content-block-body::-webkit-scrollbar-track {
+    background-color: #f1f1f1; /* Couleur de la piste de la scrollbar */
+    border-radius: 10px; /* Coins arrondis pour la piste */
+  }
+  
+  .content-block-body.full {
+    padding: 0px; /* Aucun padding si la classe .full est appliquée */
   }
 
   .conversation-item {

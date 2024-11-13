@@ -17,8 +17,7 @@ import { RealtimeClient } from '@openai/realtime-api-beta';
 import { ItemType } from '@openai/realtime-api-beta/dist/lib/client.js';
 import { WavRecorder, WavStreamPlayer } from '../lib/wavtools/index.js';
 import { WavRenderer } from '../utils/wav_renderer';
-import { instructions } from '../utils/conversation_config.js';
-import { voice } from '../utils/conversation_config.js';
+import { instructions, voice, mermaid_instructions } from '../utils/conversation_config.js';
 
 import { X, Edit, Zap, ArrowUp, ArrowDown } from 'react-feather';
 import { Button } from '../components/button/Button';
@@ -29,7 +28,7 @@ import './ConsolePage.scss';
 import { isJsxOpeningLikeElement } from 'typescript';
 
 import mermaid from 'mermaid';
-import { FaMicrophoneAlt } from 'react-icons/fa';
+import { FaMicrophoneAlt } from "react-icons/fa";
 
 /**
  * Type for result from get_weather() function call
@@ -190,7 +189,7 @@ export function ConsolePage() {
     client.sendUserMessageContent([
       {
         type: `input_text`,
-        text: `Bonjour`,
+        text: `Bonjour!`,
         // text: `For testing purposes, I want you to list ten car brands. Number each item, e.g. "one (or whatever number you are one): the item name".`
       },
     ]);
@@ -446,7 +445,7 @@ export function ConsolePage() {
             messages: [
               {
                   role: 'system',
-                  content: 'You are an assistant that generates Mermaid diagram code based on the given description. The mermaid diagram code output must be raw string. no markdown format',
+                  content: mermaid_instructions,
               },
               {
                   role: 'user',
@@ -462,7 +461,17 @@ export function ConsolePage() {
 
         // Render the Mermaid diagram
         const { svg } = await mermaid.render('generatedDiagram', mermaidCode);
-        setDiagramSvg(svg);
+        setDiagramSvg(svg); 
+
+        // Create a svg file into coverage
+        // const blob = new Blob([svg], { type: 'image/svg+xml' });
+        // const url = URL.createObjectURL(blob);
+        // const a = document.createElement('a');
+        // a.href = url;
+        // a.download = '/coverage/diagram.svg';
+        // a.click();
+        // URL.revokeObjectURL(url);
+
 
         return { ok: true };
       }
@@ -576,14 +585,15 @@ export function ConsolePage() {
         <img 
           src={logo} 
           alt="logo" 
-          className="mt-5 rounded-lg w-[40vh] m-auto" 
-        />
+          className={`mt-5 rounded-lg w-[40vh] m-auto transition-all duration-500 
+            ${isConnected ? 'pulse-animation' : ''}`}        
+          />
           <div className="content-block conversation mt-6">
             <div className="content-block-body" data-conversation-content>
               {!items.length && (
                 <div className='text-center'>
-                <h2 className='font-inter font-bold text-4xl mb-10'>Hello, I’m YO</h2>
-                <p className='font-inter text-1xl'>Vous avez une idée d’entreprise ? Génial !<br/>
+                <h2 className='font-inter font-bold text-5xl mb-10'>Hello, I’m FreelanceAlly</h2>
+                <p className='font-inter text-[16px] leading-6'>Vous avez une idée d’entreprise ? Génial !<br/>
                   Je suis là pour vous aider à la concrétiser, étape par étape. On va avancer ensemble,<br/> et je serai là pour vous guider et vous donner des conseils.
                   <br/><br/>
                   <span className='font-bold'>Cliquez sur le micro</span> afin que je puisse vous entendre et <br/>commencer l’aventure ! 🚀</p>
@@ -641,7 +651,7 @@ export function ConsolePage() {
               })}
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-between">
             {isConnected && canPushToTalk && (
               <Button
                 label={isRecording ? "Lâcher pour envoyer" : "Appuyez pour répondre"}
@@ -649,7 +659,7 @@ export function ConsolePage() {
                 disabled={!isConnected || !canPushToTalk}
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
-                className='flex items-center rounded-lg bg-white m-auto mt-10'
+                className='flex flex-start rounded-lg bg-white m-auto mt-10'
               />
             )}
             {/* <Toggle

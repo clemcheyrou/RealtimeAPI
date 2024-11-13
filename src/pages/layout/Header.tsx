@@ -6,7 +6,7 @@ export const Header = () => {
 	<div className="m-10 md:m-10 flex justify-between">
 		<p> </p>
 		<div>
-			<RxHamburgerMenu className="h-8 w-auto text-white"/>
+			<RxHamburgerMenu className="h-12 w-auto text-white"/>
 		</div>
 	</div>
   )
